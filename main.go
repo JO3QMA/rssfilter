@@ -1,3 +1,4 @@
+//go:build wasm
 // +build wasm
 
 package main
@@ -9,8 +10,8 @@ import (
 	"net/http"
 	neturl "net/url"
 	"strings"
-	"time"
 	"syscall/js"
+	"time"
 )
 
 // 除外するURLのリスト
@@ -53,7 +54,7 @@ type Item struct {
 func main() {
 	// Cloudflare Workers用のエントリーポイント
 	js.Global().Set("handleRequest", js.FuncOf(handleRequestJS))
-	
+
 	// プログラムを終了させない
 	select {}
 }
@@ -63,19 +64,19 @@ func handleRequestJS(this js.Value, args []js.Value) interface{} {
 	if len(args) < 1 {
 		return createJSResponse("Invalid request", 400)
 	}
-	
+
 	request := args[0]
 	url := request.Get("url").String()
-	
+
 	// URLパラメータからRSSフィードのURLを取得
 	parsedURL, err := neturl.Parse(url)
 	if err != nil {
 		return createJSResponse("Invalid URL", 400)
 	}
-	
+
 	queryParams := parsedURL.Query()
 	rssURL := queryParams.Get("url")
-	
+
 	if rssURL == "" {
 		return createJSResponse("URL parameter is required", 400)
 	}
@@ -119,7 +120,7 @@ func createJSResponse(body string, status int) map[string]interface{} {
 	} else {
 		headers["Content-Type"] = "text/plain; charset=utf-8"
 	}
-	
+
 	return map[string]interface{}{
 		"status":  status,
 		"headers": headers,
@@ -127,34 +128,33 @@ func createJSResponse(body string, status int) map[string]interface{} {
 	}
 }
 
-
 // URLの検証
 func isValidURL(rawURL string) bool {
 	parsedURL, err := neturl.Parse(rawURL)
 	if err != nil {
 		return false
 	}
-	
+
 	// 基本的なURL検証
 	if parsedURL.Scheme != "http" && parsedURL.Scheme != "https" {
 		return false
 	}
-	
+
 	if parsedURL.Host == "" {
 		return false
 	}
-	
+
 	// セキュリティ対策：ローカルホストやプライベートIPを拒否
 	host := strings.ToLower(parsedURL.Host)
-	if strings.Contains(host, "localhost") || 
-	   strings.Contains(host, "127.0.0.1") || 
-	   strings.Contains(host, "::1") ||
-	   strings.HasPrefix(host, "192.168.") ||
-	   strings.HasPrefix(host, "10.") ||
-	   strings.HasPrefix(host, "172.") {
+	if strings.Contains(host, "localhost") ||
+		strings.Contains(host, "127.0.0.1") ||
+		strings.Contains(host, "::1") ||
+		strings.HasPrefix(host, "192.168.") ||
+		strings.HasPrefix(host, "10.") ||
+		strings.HasPrefix(host, "172.") {
 		return false
 	}
-	
+
 	return true
 }
 
@@ -163,30 +163,30 @@ func fetchRSSFeed(url string) (string, error) {
 	client := &http.Client{
 		Timeout: 30 * time.Second,
 	}
-	
+
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return "", err
 	}
-	
+
 	// User-Agentを設定
 	req.Header.Set("User-Agent", "RSS-Filter/1.0")
-	
+
 	resp, err := client.Do(req)
 	if err != nil {
 		return "", err
 	}
 	defer resp.Body.Close()
-	
+
 	if resp.StatusCode != http.StatusOK {
 		return "", fmt.Errorf("HTTP error: %d", resp.StatusCode)
 	}
-	
+
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return "", err
 	}
-	
+
 	return string(body), nil
 }
 
@@ -197,7 +197,7 @@ func parseRSS(content string) (*RSS, error) {
 	if err != nil {
 		return nil, err
 	}
-	
+
 	return &rss, nil
 }
 
@@ -214,14 +214,14 @@ func filterRSS(rss *RSS) *RSS {
 			Items:       []Item{},
 		},
 	}
-	
+
 	// 各アイテムをフィルタリング
 	for _, item := range rss.Channel.Items {
 		if !shouldFilterItem(item) {
 			filteredRSS.Channel.Items = append(filteredRSS.Channel.Items, item)
 		}
 	}
-	
+
 	return filteredRSS
 }
 
@@ -233,14 +233,14 @@ func shouldFilterItem(item Item) bool {
 			return true
 		}
 	}
-	
+
 	// タイトルフィルター（部分一致）
 	for _, keyword := range denyTitleKeywords {
 		if strings.Contains(item.Title, keyword) {
 			return true
 		}
 	}
-	
+
 	return false
 }
 
@@ -250,10 +250,9 @@ func generateRSS(rss *RSS) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	
+
 	// XMLヘッダーを追加
 	result := xml.Header + string(xmlData)
-	
+
 	return result, nil
 }
-

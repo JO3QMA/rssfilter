@@ -1,3 +1,4 @@
+//go:build !wasm
 // +build !wasm
 
 package main
@@ -201,10 +202,10 @@ func TestGenerateRSSStandalone(t *testing.T) {
 
 // ヘルパー関数：文字列が含まれているかチェック
 func contains(s, substr string) bool {
-	return len(s) >= len(substr) && (s == substr || len(substr) == 0 || 
-		(len(s) > len(substr) && (s[:len(substr)] == substr || 
-		s[len(s)-len(substr):] == substr || 
-		containsInMiddle(s, substr))))
+	return len(s) >= len(substr) && (s == substr || len(substr) == 0 ||
+		(len(s) > len(substr) && (s[:len(substr)] == substr ||
+			s[len(s)-len(substr):] == substr ||
+			containsInMiddle(s, substr))))
 }
 
 func containsInMiddle(s, substr string) bool {

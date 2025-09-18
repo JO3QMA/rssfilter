@@ -1,0 +1,26 @@
+# Build artifacts
+main.wasm
+*.wasm
+
+# Go build cache
+.cache/
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Environment files
+.env
+.env.local
+
+# Wrangler
+.wrangler/

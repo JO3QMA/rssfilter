@@ -18,7 +18,7 @@ export default {
 		// /get エンドポイントの処理
 		if (url.pathname === '/get') {
 			const siteUrl = url.searchParams.get('site');
-			
+
 			if (!siteUrl) {
 				return new Response('Missing site parameter', { status: 400 });
 			}
@@ -26,13 +26,34 @@ export default {
 			try {
 				// URLの検証
 				const targetUrl = new URL(siteUrl);
-				
+
 				// リクエストをそのまま転送
 				const response = await fetch(targetUrl.toString(), {
 					method: request.method,
 					headers: request.headers,
 					body: request.body,
 				});
+
+				// 許可された MIME Type のみを許可
+				const allowedMimeTypes = [
+					'application/rss+xml',
+					'application/atom+xml',
+					'application/xml',
+					'text/xml',
+					'application/json',
+					'application/feed+json',
+				];
+
+				const contentType = response.headers.get('content-type') ?? '';
+				const isAllowed = allowedMimeTypes.some((mime) =>
+					contentType.toLowerCase().startsWith(mime),
+				);
+
+				if (!isAllowed) {
+					return new Response('Unsupported content type', {
+						status: 415, // Unsupported Media Type
+					});
+				}
 
 				// レスポンスをそのまま返す
 				return new Response(response.body, {

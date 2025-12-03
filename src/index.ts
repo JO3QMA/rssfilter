@@ -13,6 +13,41 @@
 
 export default {
 	async fetch(request, env, ctx): Promise<Response> {
+		const url = new URL(request.url);
+
+		// /get エンドポイントの処理
+		if (url.pathname === '/get') {
+			const siteUrl = url.searchParams.get('site');
+			
+			if (!siteUrl) {
+				return new Response('Missing site parameter', { status: 400 });
+			}
+
+			try {
+				// URLの検証
+				const targetUrl = new URL(siteUrl);
+				
+				// リクエストをそのまま転送
+				const response = await fetch(targetUrl.toString(), {
+					method: request.method,
+					headers: request.headers,
+					body: request.body,
+				});
+
+				// レスポンスをそのまま返す
+				return new Response(response.body, {
+					status: response.status,
+					statusText: response.statusText,
+					headers: response.headers,
+				});
+			} catch (error) {
+				if (error instanceof TypeError && error.message.includes('Invalid URL')) {
+					return new Response('Invalid URL format', { status: 400 });
+				}
+				return new Response(`Error: ${error instanceof Error ? error.message : 'Unknown error'}`, { status: 500 });
+			}
+		}
+
 		return new Response('Hello World!');
 	},
 } satisfies ExportedHandler<Env>;

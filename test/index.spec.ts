@@ -22,3 +22,75 @@ describe('Hello World worker', () => {
 		expect(await response.text()).toMatchInlineSnapshot(`"Hello World!"`);
 	});
 });
+
+describe('/get endpoint', () => {
+	it('returns response from specified site (unit style)', async () => {
+		const request = new IncomingRequest('http://example.com/get?site=https://example.com');
+		const ctx = createExecutionContext();
+		const response = await worker.fetch(request, env, ctx);
+		await waitOnExecutionContext(ctx);
+		
+		expect(response.status).toBe(200);
+		const text = await response.text();
+		expect(text).toContain('Example Domain');
+	});
+
+	it('returns response from specified site (integration style)', async () => {
+		const response = await SELF.fetch('https://example.com/get?site=https://example.com');
+		
+		expect(response.status).toBe(200);
+		const text = await response.text();
+		expect(text).toContain('Example Domain');
+	});
+
+	it('returns 400 error when site parameter is missing (unit style)', async () => {
+		const request = new IncomingRequest('http://example.com/get');
+		const ctx = createExecutionContext();
+		const response = await worker.fetch(request, env, ctx);
+		await waitOnExecutionContext(ctx);
+		
+		expect(response.status).toBe(400);
+		expect(await response.text()).toBe('Missing site parameter');
+	});
+
+	it('returns 400 error when site parameter is missing (integration style)', async () => {
+		const response = await SELF.fetch('https://example.com/get');
+		
+		expect(response.status).toBe(400);
+		expect(await response.text()).toBe('Missing site parameter');
+	});
+
+	it('returns 400 error for invalid URL format (unit style)', async () => {
+		const request = new IncomingRequest('http://example.com/get?site=not-a-valid-url');
+		const ctx = createExecutionContext();
+		const response = await worker.fetch(request, env, ctx);
+		await waitOnExecutionContext(ctx);
+		
+		expect(response.status).toBe(400);
+		expect(await response.text()).toBe('Invalid URL format');
+	});
+
+	it('returns 400 error for invalid URL format (integration style)', async () => {
+		const response = await SELF.fetch('https://example.com/get?site=not-a-valid-url');
+		
+		expect(response.status).toBe(400);
+		expect(await response.text()).toBe('Invalid URL format');
+	});
+
+	it('preserves response headers from target site (unit style)', async () => {
+		const request = new IncomingRequest('http://example.com/get?site=https://example.com');
+		const ctx = createExecutionContext();
+		const response = await worker.fetch(request, env, ctx);
+		await waitOnExecutionContext(ctx);
+		
+		expect(response.status).toBe(200);
+		expect(response.headers.get('content-type')).toContain('text/html');
+	});
+
+	it('preserves response headers from target site (integration style)', async () => {
+		const response = await SELF.fetch('https://example.com/get?site=https://example.com');
+		
+		expect(response.status).toBe(200);
+		expect(response.headers.get('content-type')).toContain('text/html');
+	});
+});

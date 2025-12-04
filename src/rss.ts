@@ -1,6 +1,16 @@
 import { XMLParser, XMLBuilder } from 'fast-xml-parser';
 import { compiledExcludeConfig } from './config';
 
+/**
+ * fast-xml-parser の preserveOrder: true モードでのノード構造
+ */
+type XmlNode = {
+	[key: string]: XmlNodeValue | XmlNodeValue[];
+	':@'?: Record<string, string>;
+};
+
+type XmlNodeValue = XmlNode[] | { '#text': string } | { __cdata: string } | string | XmlNode;
+
 // XMLParser/Builder の設定オプション
 // preserveOrder: true により、タグの順序、コメント、CDATA、属性などを保持します
 const options = {
@@ -46,7 +56,7 @@ export function filterRss(xmlContent: string): string {
 /**
  * ノードリストを再帰的に探索し、RSS/Atomのエントリーを見つけてフィルタリングする
  */
-function processNodeList(nodes: any[]) {
+function processNodeList(nodes: XmlNode[]) {
 	for (const node of nodes) {
 		// 各ノードは { "tagName": [children] } または { ":@": attributes } などの形式
 		// preserveOrder: true の場合、node はオブジェクトで、キーがタグ名、値が子要素の配列（または値）
@@ -75,7 +85,7 @@ function processNodeList(nodes: any[]) {
 	}
 }
 
-function processRss2Channel(nodes: any[]) {
+function processRss2Channel(nodes: XmlNode[]) {
 	for (const node of nodes) {
 		const tagNames = Object.keys(node).filter((k) => k !== ':@');
 		if (tagNames.length !== 1) continue;
@@ -92,13 +102,13 @@ function processRss2Channel(nodes: any[]) {
  * @param parentArray 親要素の子ノード配列 (例: channel の children)
  * @param itemTagName エントリーのタグ名 ('item' または 'entry')
  */
-function filterItems(parentArray: any[], itemTagName: string) {
+function filterItems(parentArray: XmlNode[], itemTagName: string) {
 	// 逆順にループして削除してもインデックスがずれないようにするか、
 	// filter で新しい配列を作る。
 	// ただし parentArray は参照で渡されているので、中身を書き換える必要がある。
 	// fast-xml-parser の構造上、parentArray はオブジェクトの配列。
 
-	const itemsKeep: any[] = [];
+	const itemsKeep: XmlNode[] = [];
 	let hasChanges = false;
 
 	for (const node of parentArray) {
@@ -124,7 +134,7 @@ function filterItems(parentArray: any[], itemTagName: string) {
 /**
  * エントリー要素の内容を検査し、除外すべきかどうか判定する
  */
-function shouldExclude(entryNodes: any[]): boolean {
+function shouldExclude(entryNodes: XmlNode[]): boolean {
 	if (!Array.isArray(entryNodes)) return false;
 
 	let title = '';
@@ -185,7 +195,7 @@ function shouldExclude(entryNodes: any[]): boolean {
  * ノードの値からテキストを抽出する
  * preserveOrder: true の場合、値は [{ "#text": "foo" }] のような配列か、直接の値の場合がある
  */
-function extractTextValue(value: any): string {
+function extractTextValue(value: XmlNodeValue | XmlNodeValue[]): string {
 	if (Array.isArray(value)) {
 		for (const item of value) {
 			if (item['#text']) {
@@ -200,4 +210,3 @@ function extractTextValue(value: any): string {
 	}
 	return '';
 }
-

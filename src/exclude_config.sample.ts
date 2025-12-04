@@ -6,6 +6,5 @@ export const excludeConfig = {
 	// リンクURLに対する除外パターン
 	link: [
 		// 例: 'ad\\.example\\.com'
-	]
+	],
 };
-

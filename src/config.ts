@@ -14,10 +14,10 @@ interface CompiledExcludeConfig {
 export function validateConfig(config: typeof excludeConfig): CompiledExcludeConfig {
 	const result: CompiledExcludeConfig = {
 		title: [],
-		link: []
+		link: [],
 	};
 
-	const validateList = (patterns: string[], type: 'title' | 'link') => {
+	const validateList = (patterns: string[], type: 'title' | 'link'): void => {
 		for (const pattern of patterns) {
 			try {
 				result[type].push(new RegExp(pattern, 'i'));
@@ -35,4 +35,3 @@ export function validateConfig(config: typeof excludeConfig): CompiledExcludeCon
 
 // アプリケーション起動時に一度だけ検証を行う
 export const compiledExcludeConfig = validateConfig(excludeConfig);
-

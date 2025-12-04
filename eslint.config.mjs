@@ -25,7 +25,14 @@ export default tseslint.config(
 		},
 	},
 	{
-		ignores: ['node_modules/**', 'dist/**', '*.config.*', 'worker-configuration.d.ts', 'test/**'],
+		ignores: [
+			'node_modules/**',
+			'dist/**',
+			'*.config.*',
+			'worker-configuration.d.ts',
+			'test/**',
+			'.wrangler/**',
+		],
 	},
 );
 

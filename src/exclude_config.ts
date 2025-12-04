@@ -19,6 +19,6 @@ export const excludeConfig = {
 	link: [
 		// 例: 'ad\\.example\\.com'
 		'monstar-lab\\.com/dx/seminar-reception/',
-        'www\\.gdm\\.or\\.jp/specialprice/'
+		'www\\.gdm\\.or\\.jp/specialprice/',
 	],
 };

@@ -12,7 +12,7 @@
  */
 
 export default {
-	async fetch(request, env, ctx): Promise<Response> {
+	async fetch(request, _env, _ctx): Promise<Response> {
 		const url = new URL(request.url);
 
 		// /get エンドポイントの処理
@@ -45,9 +45,7 @@ export default {
 				];
 
 				const contentType = response.headers.get('content-type') ?? '';
-				const isAllowed = allowedMimeTypes.some((mime) =>
-					contentType.toLowerCase().startsWith(mime),
-				);
+				const isAllowed = allowedMimeTypes.some((mime) => contentType.toLowerCase().startsWith(mime));
 
 				if (!isAllowed) {
 					return new Response('Unsupported content type', {
@@ -56,10 +54,7 @@ export default {
 				}
 
 				// XML系の場合のみフィルタリング処理を行う
-				const isXml =
-					contentType.includes('xml') ||
-					contentType.includes('rss') ||
-					contentType.includes('atom');
+				const isXml = contentType.includes('xml') || contentType.includes('rss') || contentType.includes('atom');
 
 				let responseBody = response.body;
 

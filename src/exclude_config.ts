@@ -18,6 +18,7 @@ export const excludeConfig = {
 	// リンクURLに対する除外パターン
 	link: [
 		// 例: 'ad\\.example\\.com'
-		'monstar-lab.com/dx/seminar-reception/',
+		'monstar-lab\\.com/dx/seminar-reception/',
+		'www\\.gdm\\.or\\.jp/specialprice/',
 	],
 };

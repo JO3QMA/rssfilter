@@ -316,7 +316,7 @@ export default {
 				// XML系の場合のみフィルタリング処理を行う
 				const isXml = contentType.includes('xml') || contentType.includes('rss') || contentType.includes('atom');
 
-				let responseBody = response.body;
+				let responseBody: BodyInit | null = response.body;
 
 				// サイズ制限 (5MB) - これを超える場合はフィルタせずそのまま返す
 				const contentLengthHeader = response.headers.get('content-length');
@@ -354,7 +354,7 @@ export default {
 							const { getCompiledExcludeConfigForSite } = await import('./config_store');
 							let compiledConfig;
 							try {
-								compiledConfig = await getCompiledExcludeConfigForSite(_env, siteKey);
+								compiledConfig = await getCompiledExcludeConfigForSite(env, siteKey);
 							} catch (e) {
 								console.error('Error loading config from KV, using default:', e);
 								// エラー時はデフォルト設定を使用

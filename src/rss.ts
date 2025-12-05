@@ -177,7 +177,7 @@ function shouldExclude(entryNodes: XmlNode[], excludeConfig: CompiledExcludeConf
 	// 正規表現チェック
 	// タイトル判定
 	if (title) {
-		for (const pattern of compiledExcludeConfig.title) {
+		for (const pattern of excludeConfig.title) {
 			if (pattern.test(title)) {
 				return true;
 			}
@@ -186,7 +186,7 @@ function shouldExclude(entryNodes: XmlNode[], excludeConfig: CompiledExcludeConf
 
 	// リンク判定
 	if (link) {
-		for (const pattern of compiledExcludeConfig.link) {
+		for (const pattern of excludeConfig.link) {
 			if (pattern.test(link)) {
 				return true;
 			}

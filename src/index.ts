@@ -17,10 +17,10 @@
 async function generateSettingsPage(env: Env): Promise<string> {
 	const { loadConfig } = await import('./config_store');
 	const config = await loadConfig(env);
-	
+
 	// XSS対策: JSON埋め込み時に < をエスケープ
 	const configJson = JSON.stringify(config).replace(/</g, '\\u003c');
-	
+
 	return `<!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -418,8 +418,7 @@ export default {
 
 			try {
 				const body = await request.json();
-				const { Config } = await import('./config');
-				const config = body as Config;
+				const config = body as import('./config').Config;
 
 				// データ構造のバリデーション
 				if (!config || typeof config !== 'object') {

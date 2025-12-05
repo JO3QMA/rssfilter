@@ -66,7 +66,7 @@ function validatePatterns(config: ExcludePatternConfig): string[] {
  */
 export async function getCompiledExcludeConfigForSite(env: Env, site?: string): Promise<CompiledExcludeConfig> {
 	const config = await loadConfig(env);
-	
+
 	// マージされた設定を作成
 	const merged: ExcludePatternConfig = {
 		title: [...config.global.title],
@@ -82,4 +82,3 @@ export async function getCompiledExcludeConfigForSite(env: Env, site?: string): 
 	// コンパイル済み設定を返す
 	return validateConfig(merged);
 }
-

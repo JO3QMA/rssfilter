@@ -1,5 +1,5 @@
 import { XMLParser, XMLBuilder } from 'fast-xml-parser';
-import { compiledExcludeConfig } from './config';
+import { CompiledExcludeConfig, compiledExcludeConfig } from './config';
 
 /**
  * fast-xml-parser の preserveOrder: true モードでのノード構造
@@ -26,8 +26,10 @@ const options = {
 /**
  * XML文字列をパースし、設定された正規表現に基づいてエントリーをフィルタリングし、
  * 再度XML文字列として返します。
+ * @param xmlContent フィルタリングするXML文字列
+ * @param excludeConfig 除外設定（省略時はデフォルト設定を使用）
  */
-export function filterRss(xmlContent: string): string {
+export function filterRss(xmlContent: string, excludeConfig: CompiledExcludeConfig = compiledExcludeConfig): string {
 	const parser = new XMLParser(options);
 	const jsonObj = parser.parse(xmlContent);
 
@@ -47,7 +49,7 @@ export function filterRss(xmlContent: string): string {
 	// RSS 1.0: <rdf:RDF> -> <item>
 	// Atom: <feed> -> <entry>
 
-	processNodeList(jsonObj);
+	processNodeList(jsonObj, excludeConfig);
 
 	const builder = new XMLBuilder(options);
 	return builder.build(jsonObj);
@@ -56,7 +58,7 @@ export function filterRss(xmlContent: string): string {
 /**
  * ノードリストを再帰的に探索し、RSS/Atomのエントリーを見つけてフィルタリングする
  */
-function processNodeList(nodes: XmlNode[]) {
+function processNodeList(nodes: XmlNode[], excludeConfig: CompiledExcludeConfig) {
 	for (const node of nodes) {
 		// 各ノードは { "tagName": [children] } または { ":@": attributes } などの形式
 		// preserveOrder: true の場合、node はオブジェクトで、キーがタグ名、値が子要素の配列（または値）
@@ -69,30 +71,30 @@ function processNodeList(nodes: XmlNode[]) {
 		if (tagName === 'rss') {
 			// RSS 2.0: rss -> channel -> item
 			if (Array.isArray(children)) {
-				processRss2Channel(children);
+				processRss2Channel(children, excludeConfig);
 			}
 		} else if (tagName === 'rdf:RDF' || tagName === 'RDF') {
 			// RSS 1.0: rdf:RDF -> item
 			if (Array.isArray(children)) {
-				filterItems(children, 'item');
+				filterItems(children, 'item', excludeConfig);
 			}
 		} else if (tagName === 'feed') {
 			// Atom: feed -> entry
 			if (Array.isArray(children)) {
-				filterItems(children, 'entry');
+				filterItems(children, 'entry', excludeConfig);
 			}
 		}
 	}
 }
 
-function processRss2Channel(nodes: XmlNode[]) {
+function processRss2Channel(nodes: XmlNode[], excludeConfig: CompiledExcludeConfig) {
 	for (const node of nodes) {
 		const tagNames = Object.keys(node).filter((k) => k !== ':@');
 		if (tagNames.length !== 1) continue;
 		const tagName = tagNames[0];
 
 		if (tagName === 'channel' && Array.isArray(node[tagName])) {
-			filterItems(node[tagName], 'item');
+			filterItems(node[tagName], 'item', excludeConfig);
 		}
 	}
 }
@@ -101,8 +103,9 @@ function processRss2Channel(nodes: XmlNode[]) {
  * 指定されたタグ名のエントリー配列から、除外条件に合致するものを削除する
  * @param parentArray 親要素の子ノード配列 (例: channel の children)
  * @param itemTagName エントリーのタグ名 ('item' または 'entry')
+ * @param excludeConfig 除外設定
  */
-function filterItems(parentArray: XmlNode[], itemTagName: string) {
+function filterItems(parentArray: XmlNode[], itemTagName: string, excludeConfig: CompiledExcludeConfig) {
 	// 逆順にループして削除してもインデックスがずれないようにするか、
 	// filter で新しい配列を作る。
 	// ただし parentArray は参照で渡されているので、中身を書き換える必要がある。
@@ -116,7 +119,7 @@ function filterItems(parentArray: XmlNode[], itemTagName: string) {
 		const tagName = tagNames[0];
 
 		if (tagName === itemTagName) {
-			if (shouldExclude(node[tagName])) {
+			if (shouldExclude(node[tagName], excludeConfig)) {
 				hasChanges = true;
 				continue; // 除外
 			}
@@ -133,8 +136,10 @@ function filterItems(parentArray: XmlNode[], itemTagName: string) {
 
 /**
  * エントリー要素の内容を検査し、除外すべきかどうか判定する
+ * @param entryNodes エントリーの子ノード配列
+ * @param excludeConfig 除外設定
  */
-function shouldExclude(entryNodes: XmlNode[]): boolean {
+function shouldExclude(entryNodes: XmlNode[], excludeConfig: CompiledExcludeConfig): boolean {
 	if (!Array.isArray(entryNodes)) return false;
 
 	let title = '';

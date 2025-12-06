@@ -12,7 +12,7 @@
 	},
 	"kv_namespaces": [
 		{
-			"binding": "CONFIG_KV",
+			"binding": "RSSFILTER_CONFIG",
 			"id": "preview_id",
 			"preview_id": "preview_id"
 		}

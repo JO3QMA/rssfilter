@@ -7,7 +7,7 @@ const CONFIG_KEY = 'config';
  */
 export async function loadConfig(env: Env): Promise<Config> {
 	try {
-		const stored = await env.CONFIG_KV.get(CONFIG_KEY);
+		const stored = await env.RSSFILTER_CONFIG.get(CONFIG_KEY);
 		if (stored === null) {
 			return getDefaultConfig();
 		}
@@ -39,7 +39,7 @@ export async function saveConfig(env: Env, config: Config): Promise<void> {
 	}
 
 	// バリデーション通過後、KVに保存
-	await env.CONFIG_KV.put(CONFIG_KEY, JSON.stringify(config));
+	await env.RSSFILTER_CONFIG.put(CONFIG_KEY, JSON.stringify(config));
 }
 
 /**

@@ -6,9 +6,14 @@ export const settingsHtmlTemplate = `<!DOCTYPE html>
 	<title>RSS Filter 設定</title>
 	<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
 	<style>
-		.container {
+		body {
 			max-width: 800px;
 			margin: 0 auto;
+			padding: 2rem;
+		}
+		h1 {
+			color: var(--pico-primary);
+			margin-bottom: 2rem;
 		}
 		textarea {
 			font-family: monospace;
@@ -58,11 +63,8 @@ export const settingsHtmlTemplate = `<!DOCTYPE html>
 	</style>
 </head>
 <body>
-	<main class="container">
-		<article>
-			<header>
-				<h1>RSS Filter 設定</h1>
-			</header>
+	<div class="container">
+		<h1>RSS Filter 設定</h1>
 
 			<div id="message" role="alert"></div>
 
@@ -91,8 +93,7 @@ export const settingsHtmlTemplate = `<!DOCTYPE html>
 
 				<button type="submit">設定を保存</button>
 			</form>
-		</article>
-	</main>
+	</div>
 
 	<script id="initial-config" type="application/json">{{configJson}}</script>
 	<script>

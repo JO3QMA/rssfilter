@@ -277,6 +277,11 @@ export default {
 			}
 		}
 
-		return new Response('Hello World!');
+		// ルートパス: トップページを表示
+		const { homeHtmlTemplate } = await import('./templates/home');
+
+		return new Response(homeHtmlTemplate, {
+			headers: { 'content-type': 'text/html; charset=utf-8' },
+		});
 	},
 } satisfies ExportedHandler<Env>;

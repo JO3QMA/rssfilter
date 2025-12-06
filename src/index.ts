@@ -27,142 +27,80 @@ async function generateSettingsPage(env: Env): Promise<string> {
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<title>RSS Filter 設定</title>
+	<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
 	<style>
-		body {
-			font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+		.container {
 			max-width: 800px;
 			margin: 0 auto;
-			padding: 20px;
-			line-height: 1.6;
-		}
-		h1 {
-			color: #333;
-			border-bottom: 2px solid #4CAF50;
-			padding-bottom: 10px;
-		}
-		.section {
-			margin: 30px 0;
-			padding: 20px;
-			background: #f9f9f9;
-			border-radius: 8px;
-		}
-		.section h2 {
-			margin-top: 0;
-			color: #555;
-		}
-		label {
-			display: block;
-			margin: 10px 0 5px;
-			font-weight: bold;
-			color: #333;
 		}
 		textarea {
-			width: 100%;
-			min-height: 150px;
-			padding: 10px;
-			border: 1px solid #ddd;
-			border-radius: 4px;
 			font-family: monospace;
-			font-size: 14px;
-			box-sizing: border-box;
+			min-height: 150px;
 		}
 		.site-config {
-			margin: 15px 0;
-			padding: 15px;
-			background: white;
-			border: 1px solid #ddd;
-			border-radius: 4px;
+			margin: 1.5rem 0;
+			padding: 1.5rem;
+			border: 1px solid var(--pico-border-color);
+			border-radius: var(--pico-border-radius);
 		}
 		.site-config-header {
 			display: flex;
-			justify-content: space-between;
-			align-items: center;
-			margin-bottom: 10px;
+			gap: 1rem;
+			align-items: flex-end;
+			margin-bottom: 1rem;
 		}
 		.site-input {
 			flex: 1;
-			padding: 8px;
-			border: 1px solid #ddd;
-			border-radius: 4px;
-			margin-right: 10px;
-		}
-		button {
-			background: #4CAF50;
-			color: white;
-			border: none;
-			padding: 10px 20px;
-			border-radius: 4px;
-			cursor: pointer;
-			font-size: 16px;
-			margin: 5px;
-		}
-		button:hover {
-			background: #45a049;
-		}
-		button.danger {
-			background: #f44336;
-		}
-		button.danger:hover {
-			background: #da190b;
-		}
-		button.save {
-			background: #2196F3;
-			font-size: 18px;
-			padding: 15px 30px;
-			margin-top: 20px;
-		}
-		button.save:hover {
-			background: #0b7dda;
 		}
 		#message {
-			margin: 20px 0;
-			padding: 15px;
-			border-radius: 4px;
 			display: none;
 		}
-		#message.success {
-			background: #d4edda;
-			color: #155724;
-			border: 1px solid #c3e6cb;
+		#message.show {
+			display: block;
 		}
-		#message.error {
-			background: #f8d7da;
-			color: #721c24;
-			border: 1px solid #f5c6cb;
-		}
-		.help-text {
-			font-size: 12px;
-			color: #666;
-			margin-top: 5px;
+		small {
+			display: block;
+			margin-top: 0.5rem;
+			color: var(--pico-muted-color);
 		}
 	</style>
 </head>
 <body>
-	<h1>RSS Filter 設定</h1>
-	
-	<div id="message"></div>
-	
-	<form id="configForm">
-		<div class="section">
-			<h2>グローバル設定</h2>
-			<p class="help-text">すべてのサイトに適用される除外パターンです。1行に1つの正規表現パターンを入力してください。</p>
+	<main class="container">
+		<article>
+			<header>
+				<h1>RSS Filter 設定</h1>
+			</header>
 			
-			<label for="global-title">タイトル除外パターン:</label>
-			<textarea id="global-title" name="global-title" placeholder="例: ^PR:&#10;【広告】"></textarea>
+			<div id="message" role="alert"></div>
 			
-			<label for="global-link">リンク除外パターン:</label>
-			<textarea id="global-link" name="global-link" placeholder="例: ad\\.example\\.com"></textarea>
-		</div>
-		
-		<div class="section">
-			<h2>サイトごとの設定</h2>
-			<p class="help-text">特定のサイトにのみ適用される除外パターンです。ドメイン名（例: example.com）を入力してください。</p>
-			<div id="site-configs"></div>
-			<button type="button" id="add-site">サイト設定を追加</button>
-		</div>
-		
-		<button type="submit" class="save">設定を保存</button>
-	</form>
+			<form id="configForm">
+				<fieldset>
+					<legend>グローバル設定</legend>
+					<small>すべてのサイトに適用される除外パターンです。1行に1つの正規表現パターンを入力してください。</small>
+					
+					<label for="global-title">
+						タイトル除外パターン
+						<textarea id="global-title" name="global-title" placeholder="例: ^PR:&#10;【広告】" rows="8"></textarea>
+					</label>
+					
+					<label for="global-link">
+						リンク除外パターン
+						<textarea id="global-link" name="global-link" placeholder="例: ad\\.example\\.com" rows="8"></textarea>
+					</label>
+				</fieldset>
+				
+				<fieldset>
+					<legend>サイトごとの設定</legend>
+					<small>特定のサイトにのみ適用される除外パターンです。ドメイン名（例: example.com）を入力してください。</small>
+					<div id="site-configs"></div>
+					<button type="button" id="add-site" class="secondary">サイト設定を追加</button>
+				</fieldset>
+				
+				<button type="submit">設定を保存</button>
+			</form>
+		</article>
+	</main>
 	
 	<script id="initial-config" type="application/json">${configJson}</script>
 	<script>
@@ -184,13 +122,20 @@ async function generateSettingsPage(env: Env): Promise<string> {
 			const linkText = (siteConfig?.link || []).join('\\n').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 			const siteEscaped = String(site).replace(/"/g, '&quot;');
 			div.innerHTML = '<div class="site-config-header">' +
-				'<input type="text" class="site-input" value="' + siteEscaped + '" placeholder="ドメイン名 (例: example.com)" required>' +
-				'<button type="button" class="danger" onclick="removeSiteConfig(this)">削除</button>' +
+				'<label class="site-input">' +
+				'ドメイン名' +
+				'<input type="text" value="' + siteEscaped + '" placeholder="example.com" required>' +
+				'</label>' +
+				'<button type="button" class="contrast" onclick="removeSiteConfig(this)">削除</button>' +
 				'</div>' +
-				'<label>タイトル除外パターン:</label>' +
-				'<textarea class="site-title" placeholder="1行に1つの正規表現パターン">' + titleText + '</textarea>' +
-				'<label>リンク除外パターン:</label>' +
-				'<textarea class="site-link" placeholder="1行に1つの正規表現パターン">' + linkText + '</textarea>';
+				'<label>' +
+				'タイトル除外パターン' +
+				'<textarea class="site-title" placeholder="1行に1つの正規表現パターン" rows="6">' + titleText + '</textarea>' +
+				'</label>' +
+				'<label>' +
+				'リンク除外パターン' +
+				'<textarea class="site-link" placeholder="1行に1つの正規表現パターン" rows="6">' + linkText + '</textarea>' +
+				'</label>';
 			siteConfigsDiv.appendChild(div);
 		}
 		
@@ -227,7 +172,7 @@ async function generateSettingsPage(env: Env): Promise<string> {
 			
 			// サイトごとの設定を収集
 			document.querySelectorAll('.site-config').forEach(div => {
-				const siteInput = div.querySelector('.site-input');
+				const siteInput = div.querySelector('.site-input input');
 				const siteTitle = div.querySelector('.site-title');
 				const siteLink = div.querySelector('.site-link');
 				
@@ -252,18 +197,18 @@ async function generateSettingsPage(env: Env): Promise<string> {
 				const result = await response.json();
 				
 				if (response.ok) {
-					messageDiv.className = 'success';
+					messageDiv.className = 'show';
+					messageDiv.setAttribute('data-theme', 'success');
 					messageDiv.textContent = '設定を保存しました（反映まで最大1分程度かかる場合があります）';
-					messageDiv.style.display = 'block';
 				} else {
-					messageDiv.className = 'error';
+					messageDiv.className = 'show';
+					messageDiv.setAttribute('data-theme', 'danger');
 					messageDiv.textContent = result.error || 'エラーが発生しました';
-					messageDiv.style.display = 'block';
 				}
 			} catch (error) {
-				messageDiv.className = 'error';
+				messageDiv.className = 'show';
+				messageDiv.setAttribute('data-theme', 'danger');
 				messageDiv.textContent = 'エラーが発生しました: ' + error.message;
-				messageDiv.style.display = 'block';
 			}
 		});
 	</script>

@@ -1,5 +1,3 @@
-import { excludeConfig } from './exclude_config';
-
 /**
  * 除外パターン設定のインターフェース
  */
@@ -65,13 +63,20 @@ export function validateConfig(config: ExcludePatternConfig): CompiledExcludeCon
 
 /**
  * デフォルト設定を取得します（KVに設定が無い場合に使用）
+ * 旧来の exclude_config.ts は使用せず、空のデフォルト設定を返します
  */
 export function getDefaultConfig(): Config {
 	return {
-		global: excludeConfig,
+		global: {
+			title: [],
+			link: [],
+		},
 		sites: {},
 	};
 }
 
 // アプリケーション起動時に一度だけ検証を行う（後方互換性のため残す）
-export const compiledExcludeConfig = validateConfig(excludeConfig);
+export const compiledExcludeConfig = validateConfig({
+	title: [],
+	link: [],
+});

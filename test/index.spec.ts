@@ -10,20 +10,30 @@ afterEach(() => {
 	vi.restoreAllMocks();
 });
 
-describe('Hello World worker', () => {
-	it('responds with Hello World! (unit style)', async () => {
+describe('Homepage', () => {
+	it('responds with homepage HTML (unit style)', async () => {
 		const request = new IncomingRequest('http://example.com');
 		// Create an empty context to pass to `worker.fetch()`.
 		const ctx = createExecutionContext();
 		const response = await worker.fetch(request, env, ctx);
 		// Wait for all `Promise`s passed to `ctx.waitUntil()` to settle before running test assertions
 		await waitOnExecutionContext(ctx);
-		expect(await response.text()).toMatchInlineSnapshot(`"Hello World!"`);
+		expect(response.status).toBe(200);
+		expect(response.headers.get('content-type')).toBe('text/html; charset=utf-8');
+		const text = await response.text();
+		expect(text).toContain('RSS Filter');
+		expect(text).toContain('GitHub リポジトリ');
+		expect(text).toContain('/settings');
 	});
 
-	it('responds with Hello World! (integration style)', async () => {
+	it('responds with homepage HTML (integration style)', async () => {
 		const response = await SELF.fetch('https://example.com');
-		expect(await response.text()).toMatchInlineSnapshot(`"Hello World!"`);
+		expect(response.status).toBe(200);
+		expect(response.headers.get('content-type')).toBe('text/html; charset=utf-8');
+		const text = await response.text();
+		expect(text).toContain('RSS Filter');
+		expect(text).toContain('GitHub リポジトリ');
+		expect(text).toContain('/settings');
 	});
 });
 

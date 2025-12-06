@@ -9,6 +9,10 @@ RSS/Atomフィードを取得し、設定された正規表現に基づいて不
 - **構造保持**: XMLの構造（ネームスペース、CDATA、属性など）を完全に保持したままフィルタリング
 - **複数フォーマット対応**: RSS 2.0、RSS 1.0、Atom の各形式に対応
 - **安全な処理**: XXE攻撃対策、サイズ制限、エラーハンドリングを実装
+- **動的設定管理**: Cloudflare KV を使用した設定の永続化と動的更新
+- **サイトごとの個別設定**: グローバル設定に加え、サイト固有の除外パターンを設定可能
+- **Web UI**: ブラウザから直感的に設定を編集できる管理画面（`/settings`）
+- **設定のバリデーション**: 正規表現パターンの妥当性チェック
 
 ## 🚀 クイックスタート
 
@@ -36,39 +40,63 @@ npm run dev
 
 ## 📝 設定
 
-フィルタリングの除外パターンは `src/exclude_config.ts` で設定します。
+### 設定方法
 
-```typescript
-export const excludeConfig = {
-	// タイトルに対する除外パターン
-	title: [
-		'^PR:',           // "PR:" で始まるタイトルを除外
-		'【広告】',        // "【広告】" を含むタイトルを除外
-		'職員を募集します', // 完全一致
-	],
-	// リンクURLに対する除外パターン
-	link: [
-		'ad\\.example\\.com', // "ad.example.com" を含むURLを除外
-		'/spam/',            // "/spam/" を含むURLを除外
-	]
-};
+このアプリケーションでは、Cloudflare KV を使用して設定を動的に管理します。設定は以下の2つの方法で変更できます：
+
+1. **Web UI を使用（推奨）**: `/settings` エンドポイントにブラウザでアクセスし、フォームから設定を編集
+2. **API を使用**: `/api/settings` エンドポイントにPOSTリクエストを送信
+
+### 設定構造
+
+設定は以下のJSON構造を持ちます：
+
+```json
+{
+  "global": {
+    "title": ["正規表現パターン1", "正規表現パターン2"],
+    "link": ["URLパターン1", "URLパターン2"]
+  },
+  "sites": {
+    "example.com": {
+      "title": ["サイト固有のパターン"],
+      "link": ["サイト固有のURLパターン"]
+    }
+  }
+}
 ```
+
+- **`global`**: すべてのサイトに適用されるグローバル設定
+- **`sites`**: サイトごとの個別設定（ホスト名をキーとして指定）
+
+サイト固有の設定が存在する場合、グローバル設定とサイト固有の設定がマージされて適用されます。
+
+### Web UI での設定
+
+デプロイ済みのWorkerの `/settings` エンドポイント（例: `https://your-worker.your-account.workers.dev/settings`）にブラウザでアクセスしてください。
+
+### デフォルト設定
+
+KVに設定が存在しない場合は、空のデフォルト設定（フィルタリングなし）が使用されます。
 
 ### 正規表現の書き方
 
 - 文字列リテラルとして記述します（`/pattern/` ではなく `'pattern'`）
 - 大文字小文字は区別されません（`i` フラグが自動適用されます）
 - 特殊文字（`.` など）はエスケープが必要です（例: `\\.`）
+- 無効な正規表現パターンは保存時にバリデーションエラーになります
 
 ## 🔌 使い方
 
 ### APIエンドポイント
 
+#### RSSフィード取得・フィルタリング
+
 ```
 GET /get?site=<RSSフィードのURL>
 ```
 
-### 例
+**例:**
 
 ```bash
 # RSSフィードを取得してフィルタリング
@@ -78,13 +106,48 @@ curl "http://localhost:8787/get?site=https://example.com/feed.xml"
 curl "http://localhost:8787/get?site=https://www.w3.org/2005/Atom"
 ```
 
-### レスポンス
-
+**レスポンス:**
 - **成功時 (200)**: フィルタリング済みのRSS/Atomフィード（XML形式）
 - **エラー時**:
   - `400`: `site` パラメータが不足、または無効なURL形式
   - `415`: サポートされていないContent-Type（XML/JSON系以外）
   - `500`: サーバーエラー
+
+#### 設定管理画面
+
+```
+GET /settings
+```
+
+ブラウザから設定を編集できるWeb UIを表示します。
+
+#### 設定保存API
+
+```
+POST /api/settings
+```
+
+Content-Type: `application/json`
+
+**リクエストボディ:**
+```json
+{
+  "global": {
+    "title": ["^PR:", "【広告】"],
+    "link": ["ad\\.example\\.com"]
+  },
+  "sites": {
+    "example.com": {
+      "title": ["サイト固有のパターン"],
+      "link": ["site-specific\\.com"]
+    }
+  }
+}
+```
+
+**レスポンス:**
+- **成功時 (200)**: `{"success": true}`
+- **エラー時 (400/500)**: `{"error": "エラーメッセージ"}`
 
 ### サポートされるContent-Type
 
@@ -144,18 +207,24 @@ npm run deploy
 ```
 rssfilter/
 ├── src/
-│   ├── index.ts              # メインエントリーポイント（/get エンドポイント）
-│   ├── config.ts             # 設定のバリデーションとコンパイル
-│   ├── exclude_config.ts     # 除外パターンの設定（編集対象）
-│   └── rss.ts                # RSS/Atomのパース・フィルタ・ビルド処理
+│   ├── index.ts                    # メインエントリーポイント（/get, /settings, /api/settings エンドポイント）
+│   ├── config.ts                   # 設定のバリデーションとコンパイル
+│   ├── config_store.ts             # KVストレージを使った設定管理
+│   ├── exclude_config.ts           # デフォルト設定（KV未設定時のフォールバック）
+│   ├── exclude_config.sample.ts    # サンプル設定ファイル
+│   ├── rss.ts                      # RSS/Atomのパース・フィルタ・ビルド処理
+│   └── LICENSE                     # ライセンスファイル
 ├── test/
-│   ├── index.spec.ts         # エンドポイントのテスト
-│   ├── rss.spec.ts           # フィルタリングロジックのテスト
-│   └── config.spec.ts        # 設定バリデーションのテスト
+│   ├── index.spec.ts               # エンドポイントのテスト
+│   ├── rss.spec.ts                 # フィルタリングロジックのテスト
+│   ├── config.spec.ts              # 設定バリデーションのテスト
+│   └── tsconfig.json               # テスト用TypeScript設定
 ├── package.json
 ├── tsconfig.json
 ├── vitest.config.mts
-└── wrangler.jsonc
+├── wrangler.jsonc
+├── eslint.config.mjs
+└── worker-configuration.d.ts
 ```
 
 ### 技術スタック
@@ -163,22 +232,26 @@ rssfilter/
 - **Runtime**: Cloudflare Workers
 - **Language**: TypeScript
 - **XML Parsing**: [fast-xml-parser](https://github.com/NaturalIntelligence/fast-xml-parser) v5
+- **Storage**: Cloudflare KV (設定の永続化)
 - **Testing**: Vitest + @cloudflare/vitest-pool-workers
 - **Build Tool**: Wrangler
+- **UI Framework**: Pico.css (設定画面用)
 
 ### フィルタリングの仕組み
 
-1. **パース**: `fast-xml-parser` の `preserveOrder: true` モードでXMLを解析
-2. **抽出**: RSS/Atomの各エントリーから `title` と `link` を抽出
-3. **判定**: 設定された正規表現パターンと照合
-4. **除外**: マッチしたエントリーを削除
-5. **再構築**: フィルタリング後の構造をXML文字列として再構築
+1. **設定読み込み**: Cloudflare KV からサイトごとの設定を取得（グローバル設定 + サイト固有設定のマージ）
+2. **パース**: `fast-xml-parser` の `preserveOrder: true` モードでXMLを解析
+3. **抽出**: RSS/Atomの各エントリーから `title` と `link` を抽出
+4. **判定**: 読み込んだ設定の正規表現パターンと照合
+5. **除外**: マッチしたエントリーを削除
+6. **再構築**: フィルタリング後の構造をXML文字列として再構築
 
 ### セキュリティ機能
 
 - **XXE対策**: `processEntities: false` でエンティティ展開を無効化
 - **サイズ制限**: 5MBを超えるレスポンスはフィルタリングをスキップ（メモリ保護）
 - **エラーハンドリング**: パースエラー時は元のコンテンツをそのまま返す（Fail Open）
+- **設定バリデーション**: 正規表現パターンの妥当性を保存時に検証
 
 ## 🧪 テスト
 

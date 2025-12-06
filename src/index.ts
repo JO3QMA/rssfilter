@@ -44,13 +44,26 @@ async function generateSettingsPage(env: Env): Promise<string> {
 			border-radius: var(--pico-border-radius);
 		}
 		.site-config-header {
+			margin-bottom: 1rem;
+		}
+		.site-config-header .domain-label {
+			display: block;
+			margin-bottom: 0.5rem;
+			font-size: 0.875rem;
+			font-weight: 500;
+		}
+		.site-config-header .input-row {
 			display: flex;
 			gap: 1rem;
 			align-items: flex-end;
-			margin-bottom: 1rem;
 		}
-		.site-input {
+		.site-config-header .input-row input {
 			flex: 1;
+			margin: 0;
+		}
+		.site-config-header .input-row button {
+			margin: 0;
+			white-space: nowrap;
 		}
 		#message {
 			display: none;
@@ -122,11 +135,11 @@ async function generateSettingsPage(env: Env): Promise<string> {
 			const linkText = (siteConfig?.link || []).join('\\n').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 			const siteEscaped = String(site).replace(/"/g, '&quot;');
 			div.innerHTML = '<div class="site-config-header">' +
-				'<label class="site-input">' +
-				'ドメイン名' +
-				'<input type="text" value="' + siteEscaped + '" placeholder="example.com" required>' +
-				'</label>' +
+				'<label class="domain-label">ドメイン名</label>' +
+				'<div class="input-row">' +
+				'<input type="text" class="site-input" value="' + siteEscaped + '" placeholder="example.com" required>' +
 				'<button type="button" class="contrast" onclick="removeSiteConfig(this)">削除</button>' +
+				'</div>' +
 				'</div>' +
 				'<label>' +
 				'タイトル除外パターン' +
@@ -172,7 +185,7 @@ async function generateSettingsPage(env: Env): Promise<string> {
 			
 			// サイトごとの設定を収集
 			document.querySelectorAll('.site-config').forEach(div => {
-				const siteInput = div.querySelector('.site-input input');
+				const siteInput = div.querySelector('.site-input');
 				const siteTitle = div.querySelector('.site-title');
 				const siteLink = div.querySelector('.site-link');
 				

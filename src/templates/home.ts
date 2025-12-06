@@ -66,7 +66,7 @@ export const homeHtmlTemplate = `<!DOCTYPE html>
 		</p>
 
 		<div class="links">
-			<a href="/settings" class="btn">⚙️ 設定</a>
+			<button type="button" id="settings-btn" class="btn">⚙️ 設定</button>
 		</div>
 
 		<div class="rss-input-section">
@@ -86,6 +86,10 @@ export const homeHtmlTemplate = `<!DOCTYPE html>
 	</div>
 
 	<script>
+		document.getElementById('settings-btn').addEventListener('click', () => {
+			window.location.href = '/settings';
+		});
+
 		document.getElementById('copy-btn').addEventListener('click', async () => {
 			const rssUrl = document.getElementById('rss-url').value.trim();
 			const copyBtn = document.getElementById('copy-btn');

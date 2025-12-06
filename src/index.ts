@@ -35,6 +35,8 @@ async function generateSettingsPage(env: Env): Promise<string> {
 		}
 		textarea {
 			font-family: monospace;
+			font-size: 0.75rem;
+			padding: 0.75rem;
 			min-height: 150px;
 		}
 		.site-config {

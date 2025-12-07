@@ -160,6 +160,15 @@ Content-Type: `application/json`
 
 ## 🛠️ 開発
 
+### 開発環境（Dev Container）
+
+このプロジェクトは Dev Container に対応しています。VS Code を使用している場合、以下の手順で環境構築を自動化できます。
+
+1. コマンドパレット（\`Ctrl+Shift+P\` / \`Cmd+Shift+P\`）を開く
+2. "Dev Containers: Reopen in Container" を選択
+
+これにより、Node.js (LTS)、Wrangler、および推奨されるVS Code拡張機能が事前インストールされた環境が起動します。
+
 ### 開発サーバーの起動
 
 ```bash
@@ -184,7 +193,46 @@ Cloudflare Workersの型定義を生成する場合：
 npm run cf-typegen
 ```
 
+### リントとフォーマット
+
+コードの静的解析とフォーマットを行う場合：
+
+```bash
+# リント実行
+npm run lint
+
+# リント自動修正
+npm run lint:fix
+```
+
 ## 📦 デプロイ
+
+### KVネームスペースの作成
+
+このアプリケーションは設定の保存にCloudflare KVを使用します。デプロイ前に自身のCloudflareアカウントでKVネームスペースを作成する必要があります。
+
+1. **本番用KVの作成**:
+   ```bash
+   npx wrangler kv:namespace create RSSFILTER_CONFIG
+   ```
+
+2. **プレビュー用KVの作成**（推奨）:
+   ```bash
+   npx wrangler kv:namespace create RSSFILTER_CONFIG --preview
+   ```
+
+3. **`wrangler.jsonc` の更新**:
+   コマンドの出力結果（ID）を `wrangler.jsonc` に設定してください。
+
+   ```jsonc
+   	"kv_namespaces": [
+   		{
+   			"binding": "RSSFILTER_CONFIG",
+   			"id": "ここに本番用IDを設定",
+   			"preview_id": "ここにプレビュー用IDを設定"
+   		}
+   	]
+   ```
 
 ### Cloudflare Workersへのデプロイ
 
@@ -200,6 +248,17 @@ npm run deploy
 
 必要に応じて、`wrangler.jsonc` で環境変数やバインディングを設定できます。
 
+### アクセス制限（推奨）
+
+管理画面（`/settings`）および設定API（`/api/settings`）は、認証なしでアクセスできる状態では第三者に設定を書き換えられるリスクがあります。
+本番環境で運用する際は、**Cloudflare Access (Zero Trust)** を使用して、`/get` 以外のパスへのアクセスを制限することを強く推奨します。
+
+**推奨設定例:**
+- **対象**: `your-worker.workers.dev/*`
+- **ポリシー**:
+  - Path が `/get` で始まる場合: **Bypass** (誰でもアクセス可能)
+  - それ以外: **Allow** (メール認証や特定のIPアドレスのみ許可)
+
 ## 🏗️ アーキテクチャ
 
 ### ディレクトリ構造
@@ -210,8 +269,6 @@ rssfilter/
 │   ├── index.ts                    # メインエントリーポイント（/get, /settings, /api/settings エンドポイント）
 │   ├── config.ts                   # 設定のバリデーションとコンパイル
 │   ├── config_store.ts             # KVストレージを使った設定管理
-│   ├── exclude_config.ts           # デフォルト設定（KV未設定時のフォールバック）
-│   ├── exclude_config.sample.ts    # サンプル設定ファイル
 │   ├── rss.ts                      # RSS/Atomのパース・フィルタ・ビルド処理
 │   └── LICENSE                     # ライセンスファイル
 ├── test/

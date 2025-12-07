@@ -1,18 +1,14 @@
 {
-	"name": "Node.js & Go Development",
+	"name": "RSS Filter Dev Container",
 	"image": "mcr.microsoft.com/devcontainers/base:ubuntu",
 	"features": {
 		"ghcr.io/devcontainers/features/node:1": {
 			"version": "lts"
-		},
-		"ghcr.io/devcontainers/features/go:1": {
-			"version": "latest"
 		}
 	},
 	"customizations": {
 		"vscode": {
 			"extensions": [
-				"golang.go",
 				"dbaeumer.vscode-eslint",
 				"esbenp.prettier-vscode",
 				"github.vscode-github-actions"
@@ -20,5 +16,5 @@
 		}
 	},
 	"remoteUser": "vscode",
-	"postCreateCommand": "npm install -g npm@latest wrangler && go version && node --version && npm --version && wrangler --version"
+	"postCreateCommand": "npm install -g npm@latest wrangler && node --version && npm --version && wrangler --version"
 }

@@ -4,7 +4,6 @@
 
 - **Node.js**: LTS版
 - **npm**: Node.jsに付属（最新版にアップグレードされます）
-- **Golang**: 最新版
 - **Cloudflare Wrangler**: 最新版（グローバルインストール）
 
 ## 使用方法
@@ -20,7 +19,6 @@
 
 - Node.js (LTS)
 - npm (最新版)
-- Golang (最新版)
 - Cloudflare Wrangler (最新版)
 - Git
 - その他の開発ツール
@@ -29,7 +27,6 @@
 
 以下のVS Code拡張機能が自動的にインストールされます：
 
-- Go (golang.go)
 - ESLint (dbaeumer.vscode-eslint)
 - Prettier (esbenp.prettier-vscode)
 
@@ -40,6 +37,5 @@
 ```bash
 node --version
 npm --version
-go version
 wrangler --version
 ```

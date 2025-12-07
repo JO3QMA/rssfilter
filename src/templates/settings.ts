@@ -54,6 +54,33 @@ export const settingsHtmlTemplate = `<!DOCTYPE html>
 		}
 		#message.show {
 			display: block;
+			padding: 1rem 1.5rem;
+			margin-bottom: 1.5rem;
+			border-radius: 0.5rem;
+			border: 2px solid;
+			font-weight: 500;
+			box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+			animation: slideIn 0.3s ease-out;
+		}
+		#message.show[data-theme="success"] {
+			background-color: #d1edff;
+			border-color: #0d6efd;
+			color: #0c63e4;
+		}
+		#message.show[data-theme="danger"] {
+			background-color: #f8d7da;
+			border-color: #dc3545;
+			color: #b02a37;
+		}
+		@keyframes slideIn {
+			from {
+				opacity: 0;
+				transform: translateY(-10px);
+			}
+			to {
+				opacity: 1;
+				transform: translateY(0);
+			}
 		}
 		small {
 			display: block;
@@ -152,7 +179,9 @@ export const settingsHtmlTemplate = `<!DOCTYPE html>
 			e.preventDefault();
 
 			const messageDiv = document.getElementById('message');
-			messageDiv.style.display = 'none';
+			messageDiv.className = '';
+			messageDiv.removeAttribute('data-theme');
+			messageDiv.textContent = '';
 
 			// フォームから設定オブジェクトを構築
 			const newConfig = {
@@ -193,15 +222,33 @@ export const settingsHtmlTemplate = `<!DOCTYPE html>
 					messageDiv.className = 'show';
 					messageDiv.setAttribute('data-theme', 'success');
 					messageDiv.textContent = '設定を保存しました（反映まで最大1分程度かかる場合があります）';
+					// 15秒後にメッセージを自動的に隠す
+					setTimeout(() => {
+						messageDiv.className = '';
+						messageDiv.removeAttribute('data-theme');
+						messageDiv.textContent = '';
+					}, 15000);
 				} else {
 					messageDiv.className = 'show';
 					messageDiv.setAttribute('data-theme', 'danger');
 					messageDiv.textContent = result.error || 'エラーが発生しました';
+					// 15秒後にエラーメッセージを自動的に隠す
+					setTimeout(() => {
+						messageDiv.className = '';
+						messageDiv.removeAttribute('data-theme');
+						messageDiv.textContent = '';
+					}, 15000);
 				}
 			} catch (error) {
 				messageDiv.className = 'show';
 				messageDiv.setAttribute('data-theme', 'danger');
 				messageDiv.textContent = 'エラーが発生しました: ' + error.message;
+				// 15秒後にエラーメッセージを自動的に隠す
+				setTimeout(() => {
+					messageDiv.className = '';
+					messageDiv.removeAttribute('data-theme');
+					messageDiv.textContent = '';
+				}, 15000);
 			}
 		});
 	</script>

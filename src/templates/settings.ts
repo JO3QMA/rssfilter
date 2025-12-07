@@ -126,6 +126,14 @@ export const settingsHtmlTemplate = `<!DOCTYPE html>
 	<script>
 		const config = JSON.parse(document.getElementById('initial-config').textContent);
 
+		// Ctrl + S で設定を保存する機能を追加
+		document.addEventListener('keydown', function(e) {
+			if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+				e.preventDefault(); // ブラウザのデフォルトの保存動作を防ぐ
+				document.getElementById('configForm').requestSubmit(); // フォームを送信
+			}
+		});
+
 		// グローバル設定をフォームに反映
 		document.getElementById('global-title').value = config.global.title.join('\\n');
 		document.getElementById('global-link').value = config.global.link.join('\\n');

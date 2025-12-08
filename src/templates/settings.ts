@@ -54,12 +54,18 @@ export const settingsHtmlTemplate = `<!DOCTYPE html>
 		}
 		#message.show {
 			display: block;
+			position: fixed;
+			top: 20px;
+			left: 50%;
+			transform: translateX(-50%);
+			max-width: min(600px, 90vw);
 			padding: 1rem 1.5rem;
-			margin-bottom: 1.5rem;
 			border-radius: 0.5rem;
 			border: 2px solid;
 			font-weight: 500;
-			box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+			font-size: 0.875rem;
+			box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+			z-index: 1000;
 			animation: slideIn 0.3s ease-out;
 		}
 		#message.show[data-theme="success"] {
@@ -75,11 +81,11 @@ export const settingsHtmlTemplate = `<!DOCTYPE html>
 		@keyframes slideIn {
 			from {
 				opacity: 0;
-				transform: translateY(-10px);
+				transform: translateX(-50%) translateY(-10px);
 			}
 			to {
 				opacity: 1;
-				transform: translateY(0);
+				transform: translateX(-50%) translateY(0);
 			}
 		}
 		small {

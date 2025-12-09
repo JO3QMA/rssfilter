@@ -13,7 +13,7 @@
 	},
 	"devDependencies": {
 		"@cloudflare/vitest-pool-workers": "^0.10.14",
-		"@typescript-eslint/eslint-plugin": "^8.0.0",
+		"@typescript-eslint/eslint-plugin": "^8.49.0",
 		"@typescript-eslint/parser": "^8.0.0",
 		"typescript-eslint": "^8.0.0",
 		"eslint": "^9.0.0",

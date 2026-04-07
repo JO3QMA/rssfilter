@@ -29,6 +29,7 @@
 補足:
 
 - テストは `vitest.config.mts` で `@cloudflare/vitest-pool-workers` を使い、Wrangler 設定（`wrangler.jsonc`）を参照します。
+- `vitest` は `~4.1.x`（patch のみ）にしている。peer は `^4.1.0` だが、minor を自動で上げすぎないようプール連携を保守的に保つため。
 
 ## Code style / conventions
 

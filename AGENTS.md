@@ -9,7 +9,7 @@
 - テスト実行: `npm test`（Vitest）
 - リント: `npm run lint`
 - リント自動修正: `npm run lint:fix`
-- Workers 型生成: `npm run cf-typegen`
+- Workers 型生成: `npm run cf-typegen`（Wrangler を上げたあとは `worker-configuration.d.ts` を最新にするため再実行）
 
 ## Local development tips
 

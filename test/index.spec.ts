@@ -3,6 +3,9 @@ import { createExecutionContext, waitOnExecutionContext } from 'cloudflare:test'
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import worker from '../src/index';
 
+// Integration-style tests use exports.default.fetch (cloudflare:workers); same binding
+// semantics as the deprecated cloudflare:test SELF.fetch in vitest-pool-workers 0.14+.
+
 // For now, you'll need to do something like this to get a correctly-typed
 // `Request` to pass to `worker.fetch()`.
 const IncomingRequest = Request<unknown, IncomingRequestCfProperties>;

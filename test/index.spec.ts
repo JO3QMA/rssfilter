@@ -1,6 +1,10 @@
-import { env, createExecutionContext, waitOnExecutionContext, SELF } from 'cloudflare:test';
+import { env, exports } from 'cloudflare:workers';
+import { createExecutionContext, waitOnExecutionContext } from 'cloudflare:test';
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import worker from '../src/index';
+
+// Integration-style tests use exports.default.fetch (cloudflare:workers); same binding
+// semantics as the deprecated cloudflare:test SELF.fetch in vitest-pool-workers 0.14+.
 
 // For now, you'll need to do something like this to get a correctly-typed
 // `Request` to pass to `worker.fetch()`.
@@ -27,7 +31,7 @@ describe('Homepage', () => {
 	});
 
 	it('responds with homepage HTML (integration style)', async () => {
-		const response = await SELF.fetch('https://example.com');
+		const response = await exports.default.fetch('https://example.com');
 		expect(response.status).toBe(200);
 		expect(response.headers.get('content-type')).toBe('text/html; charset=utf-8');
 		const text = await response.text();
@@ -89,7 +93,7 @@ describe('/get endpoint', () => {
 	});
 
 	it('returns 400 error when site parameter is missing (integration style)', async () => {
-		const response = await SELF.fetch('https://example.com/get');
+		const response = await exports.default.fetch('https://example.com/get');
 		
 		expect(response.status).toBe(400);
 		expect(await response.text()).toBe('Missing site parameter');
@@ -106,7 +110,7 @@ describe('/get endpoint', () => {
 	});
 
 	it('returns 400 error for invalid URL format (integration style)', async () => {
-		const response = await SELF.fetch('https://example.com/get?site=not-a-valid-url');
+		const response = await exports.default.fetch('https://example.com/get?site=not-a-valid-url');
 		
 		expect(response.status).toBe(400);
 		expect(await response.text()).toBe('Invalid URL format');

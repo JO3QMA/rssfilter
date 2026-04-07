@@ -9,7 +9,7 @@
 - テスト実行: `npm test`（Vitest）
 - リント: `npm run lint`
 - リント自動修正: `npm run lint:fix`
-- Workers 型生成: `npm run cf-typegen`
+- Workers 型生成: `npm run cf-typegen`（Wrangler を上げたあとは `worker-configuration.d.ts` を最新にするため再実行）
 
 ## Local development tips
 
@@ -29,6 +29,7 @@
 補足:
 
 - テストは `vitest.config.mts` で `@cloudflare/vitest-pool-workers` を使い、Wrangler 設定（`wrangler.jsonc`）を参照します。
+- `vitest` は `~4.1.x`（patch のみ）にしている。peer は `^4.1.0` だが、minor を自動で上げすぎないようプール連携を保守的に保つため。
 
 ## Code style / conventions
 
@@ -43,7 +44,7 @@
 
 ## CI notes
 
-- GitHub Actions は Node 20 / `npm ci` で実行します。
+- GitHub Actions は Node 22 / `npm ci` で実行します（Vitest 4 が引き込む Vite 8 の `engines` が Node ^20.19 または ^22.12 以上を要求するため）。
 - `npm run lint:fix` が CI で走り、差分が出ると **自動コミットされます**（`.github/workflows/test.yml`）。
   - 変更時はローカルでも `npm run lint:fix` を先に実行してから進めると安全です。
 

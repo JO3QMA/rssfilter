@@ -43,7 +43,7 @@
 
 ## CI notes
 
-- GitHub Actions は Node 20 / `npm ci` で実行します。
+- GitHub Actions は Node 22 / `npm ci` で実行します（Vitest 4 が引き込む Vite 8 の `engines` が Node ^20.19 または ^22.12 以上を要求するため）。
 - `npm run lint:fix` が CI で走り、差分が出ると **自動コミットされます**（`.github/workflows/test.yml`）。
   - 変更時はローカルでも `npm run lint:fix` を先に実行してから進めると安全です。
 

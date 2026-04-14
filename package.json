@@ -25,6 +25,6 @@
 		"wrangler": "^4.80.0"
 	},
 	"dependencies": {
-		"fast-xml-parser": "^5.3.3"
+		"fast-xml-parser": "^5.5.12"
 	}
 }

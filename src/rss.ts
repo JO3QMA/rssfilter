@@ -1,5 +1,6 @@
 import { XMLParser, XMLBuilder } from 'fast-xml-parser';
 import { CompiledExcludeConfig, compiledExcludeConfig } from './config';
+import { matchesExclude } from './exclude';
 
 /**
  * fast-xml-parser の preserveOrder: true モードでのノード構造
@@ -174,26 +175,7 @@ function shouldExclude(entryNodes: XmlNode[], excludeConfig: CompiledExcludeConf
 		}
 	}
 
-	// 正規表現チェック
-	// タイトル判定
-	if (title) {
-		for (const pattern of excludeConfig.title) {
-			if (pattern.test(title)) {
-				return true;
-			}
-		}
-	}
-
-	// リンク判定
-	if (link) {
-		for (const pattern of excludeConfig.link) {
-			if (pattern.test(link)) {
-				return true;
-			}
-		}
-	}
-
-	return false;
+	return matchesExclude(title, link, excludeConfig);
 }
 
 /**

@@ -1,3 +1,5 @@
+import { navHtml, navStyles } from './nav';
+
 export const settingsHtmlTemplate = `<!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -11,6 +13,7 @@ export const settingsHtmlTemplate = `<!DOCTYPE html>
 			margin: 0 auto;
 			padding: 2rem;
 		}
+		${navStyles}
 		h1 {
 			color: var(--pico-primary);
 			margin-bottom: 2rem;
@@ -96,8 +99,9 @@ export const settingsHtmlTemplate = `<!DOCTYPE html>
 	</style>
 </head>
 <body>
+	${navHtml.replace('href="/settings"', 'href="/settings" aria-current="page"')}
 	<div class="container">
-		<h1>RSS Filter 設定</h1>
+		<h1>RSS Reader 除外設定</h1>
 
 			<div id="message" role="alert"></div>
 

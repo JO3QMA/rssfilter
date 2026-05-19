@@ -9,5 +9,14 @@ export default defineConfig({
 	],
 	test: {
 		setupFiles: ['./test/apply-migrations.ts'],
+		coverage: {
+			provider: 'istanbul',
+			include: ['src/**/*.ts'],
+			exclude: ['src/templates/**'],
+			reporter: process.env.CI
+				? ['text', 'text-summary', 'lcov', 'json-summary']
+				: ['text', 'text-summary', 'html'],
+			reportsDirectory: './coverage',
+		},
 	},
 });

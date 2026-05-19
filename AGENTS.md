@@ -8,6 +8,7 @@
 - D1 マイグレーション（ローカル）: `npx wrangler d1 migrations apply RSSFILTER_DB --local`
 - 開発サーバー起動: `npm run dev`（= `wrangler dev`）
 - テスト実行: `npm test`（Vitest）
+- カバレッジ付きテスト: `npm run test:coverage`（レポートは `coverage/`）
 - リント: `npm run lint`
 - リント自動修正: `npm run lint:fix`
 - Workers 型生成: `npm run cf-typegen`（Wrangler を上げたあとは `worker-configuration.d.ts` を最新にするため再実行）
@@ -28,12 +29,15 @@
 ## Testing instructions
 
 - 全テスト: `npm test`
+- カバレッジ: `npm run test:coverage`
 - ウォッチ: `npm test -- --watch`
 - 1 テストのみ: `npm test -- -t "<test name>"`
 
 補足:
 
 - テストは `vitest.config.mts` で `@cloudflare/vitest-pool-workers` を使い、Wrangler 設定（`wrangler.jsonc`）を参照します。
+- カバレッジは Workers ランタイムの制約により **Istanbul**（`@vitest/coverage-istanbul`）を使用。V8 プロバイダは非対応。
+- PR 向け CI では `scripts/update-pr-coverage.mjs` が PR 本文末尾にカバレッジ表を追記（`<!-- coverage:start/end -->` で差し替え）。
 - D1 スキーマは `test/apply-migrations.ts` で各テストラン前に適用されます。
 - `vitest` は `~4.1.x`（patch のみ）にしている。peer は `^4.1.0` だが、minor を自動で上げすぎないようプール連携を保守的に保つため。
 - Vitest 4 / Vite 8 は Node ^20.19 または ^22.12 以上を推奨（CI は Node 22）。

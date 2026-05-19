@@ -1,287 +1,286 @@
-/**
- * Welcome to Cloudflare Workers! This is your first worker.
- *
- * - Run `npm run dev` in your terminal to start a development server
- * - Open a browser tab at http://localhost:8787/ to see your worker in action
- * - Run `npm run deploy` to publish your worker
- *
- * Bind resources to your worker in `wrangler.jsonc`. After adding bindings, a type definition for the
- * `Env` object can be regenerated with `npm run cf-typegen`.
- *
- * Learn more at https://developers.cloudflare.com/workers/
- */
+import { loadConfig, saveConfig } from './config_store';
+import { validateRegExp } from './config';
+import type { Config } from './config';
+import { listSubscriptions, createSubscription, getSubscription, updateSubscription, deleteSubscription } from './db/subscriptions';
+import { listItems } from './db/items';
+import { fetchOneSubscription, runScheduledFetch } from './fetch_job';
+import { readerHtmlTemplate } from './templates/reader';
+import { subscriptionsHtmlTemplate } from './templates/subscriptions';
 
-/**
- * 設定画面のHTMLを生成します
- */
 async function generateSettingsPage(env: Env): Promise<string> {
-	const { loadConfig } = await import('./config_store');
 	const config = await loadConfig(env);
-
-	// XSS対策: JSON埋め込み時に < をエスケープ
 	const configJson = JSON.stringify(config).replace(/</g, '\\u003c');
-
-	// テンプレートを読み込み
 	const { settingsHtmlTemplate } = await import('./templates/settings');
-
-	// プレースホルダーを置換
 	return settingsHtmlTemplate.replace('{{configJson}}', configJson);
 }
 
+function jsonResponse(data: unknown, status = 200): Response {
+	return new Response(JSON.stringify(data), {
+		status,
+		headers: { 'content-type': 'application/json; charset=utf-8' },
+	});
+}
+
+function htmlResponse(html: string): Response {
+	return new Response(html, {
+		headers: { 'content-type': 'text/html; charset=utf-8' },
+	});
+}
+
+function subscriptionToJson(row: import('./types').SubscriptionRow) {
+	return {
+		id: row.id,
+		feed_url: row.feed_url,
+		title: row.title,
+		site_hostname: row.site_hostname,
+		enabled: row.enabled === 1,
+		etag: row.etag,
+		last_modified: row.last_modified,
+		last_fetched_at: row.last_fetched_at,
+		last_error: row.last_error,
+		created_at: row.created_at,
+		updated_at: row.updated_at,
+	};
+}
+
+async function handleApiSettings(request: Request, env: Env): Promise<Response> {
+	if (request.method !== 'POST') {
+		return new Response('Method not allowed', { status: 405 });
+	}
+
+	try {
+		const body = await request.json();
+		const config = body as Config;
+
+		if (!config || typeof config !== 'object') {
+			return jsonResponse({ error: 'Invalid config structure' }, 400);
+		}
+
+		if (!config.global || !Array.isArray(config.global.title) || !Array.isArray(config.global.link)) {
+			return jsonResponse({ error: 'Invalid global config structure' }, 400);
+		}
+
+		if (config.sites && typeof config.sites !== 'object') {
+			return jsonResponse({ error: 'Invalid sites config structure' }, 400);
+		}
+
+		const errors: string[] = [];
+
+		for (const pattern of config.global.title) {
+			if (typeof pattern !== 'string') {
+				errors.push(`Global title: invalid type (expected string)`);
+			} else if (!validateRegExp(pattern)) {
+				errors.push(`Global title: invalid regex pattern "${pattern}"`);
+			}
+		}
+		for (const pattern of config.global.link) {
+			if (typeof pattern !== 'string') {
+				errors.push(`Global link: invalid type (expected string)`);
+			} else if (!validateRegExp(pattern)) {
+				errors.push(`Global link: invalid regex pattern "${pattern}"`);
+			}
+		}
+
+		if (config.sites) {
+			for (const [site, siteConfig] of Object.entries(config.sites)) {
+				if (!siteConfig || typeof siteConfig !== 'object') {
+					errors.push(`Site ${site}: invalid config structure`);
+					continue;
+				}
+				if (!Array.isArray(siteConfig.title) || !Array.isArray(siteConfig.link)) {
+					errors.push(`Site ${site}: invalid config structure (title and link must be arrays)`);
+					continue;
+				}
+				for (const pattern of siteConfig.title) {
+					if (typeof pattern !== 'string') {
+						errors.push(`Site ${site} title: invalid type (expected string)`);
+					} else if (!validateRegExp(pattern)) {
+						errors.push(`Site ${site} title: invalid regex pattern "${pattern}"`);
+					}
+				}
+				for (const pattern of siteConfig.link) {
+					if (typeof pattern !== 'string') {
+						errors.push(`Site ${site} link: invalid type (expected string)`);
+					} else if (!validateRegExp(pattern)) {
+						errors.push(`Site ${site} link: invalid regex pattern "${pattern}"`);
+					}
+				}
+			}
+		}
+
+		if (errors.length > 0) {
+			return jsonResponse({ error: `正規表現が間違っています: ${errors.join(', ')}` }, 400);
+		}
+
+		await saveConfig(env, config);
+		return jsonResponse({ success: true });
+	} catch (error) {
+		console.error('Error saving config:', error);
+		if (error instanceof Error && error.message.includes('Invalid regex')) {
+			return jsonResponse({ error: error.message }, 400);
+		}
+		return jsonResponse({ error: 'Internal server error' }, 500);
+	}
+}
+
+async function handleApiSubscriptions(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+	if (request.method === 'GET') {
+		const rows = await listSubscriptions(env);
+		return jsonResponse({ subscriptions: rows.map(subscriptionToJson) });
+	}
+
+	if (request.method === 'POST') {
+		try {
+			const body = (await request.json()) as { feed_url?: string };
+			const feedUrl = body.feed_url?.trim();
+			if (!feedUrl) {
+				return jsonResponse({ error: 'feed_url is required' }, 400);
+			}
+			let parsed: URL;
+			try {
+				parsed = new URL(feedUrl);
+			} catch {
+				return jsonResponse({ error: 'Invalid URL format' }, 400);
+			}
+			const siteHostname = parsed.hostname;
+			const row = await createSubscription(env, feedUrl, siteHostname);
+			ctx.waitUntil(fetchOneSubscription(env, row.id));
+			return jsonResponse({ subscription: subscriptionToJson(row) }, 201);
+		} catch (e) {
+			const msg = e instanceof Error ? e.message : 'Unknown error';
+			if (msg.includes('UNIQUE')) {
+				return jsonResponse({ error: 'This feed is already subscribed' }, 409);
+			}
+			return jsonResponse({ error: msg }, 500);
+		}
+	}
+
+	return new Response('Method not allowed', { status: 405 });
+}
+
+async function handleApiSubscriptionById(request: Request, env: Env, id: string): Promise<Response> {
+	if (request.method === 'DELETE') {
+		const deleted = await deleteSubscription(env, id);
+		if (!deleted) {
+			return jsonResponse({ error: 'Not found' }, 404);
+		}
+		return jsonResponse({ success: true });
+	}
+
+	if (request.method === 'PATCH') {
+		const body = (await request.json()) as { enabled?: boolean; title?: string };
+		const updates: { enabled?: boolean; title?: string | null } = {};
+		if (typeof body.enabled === 'boolean') {
+			updates.enabled = body.enabled;
+		}
+		if (body.title !== undefined) {
+			updates.title = body.title;
+		}
+		const row = await updateSubscription(env, id, updates);
+		if (!row) {
+			return jsonResponse({ error: 'Not found' }, 404);
+		}
+		return jsonResponse({ subscription: subscriptionToJson(row) });
+	}
+
+	return new Response('Method not allowed', { status: 405 });
+}
+
+async function handleApiItems(url: URL, env: Env): Promise<Response> {
+	const limit = Math.min(Number.parseInt(url.searchParams.get('limit') ?? '50', 10) || 50, 100);
+	const offset = Number.parseInt(url.searchParams.get('offset') ?? '0', 10) || 0;
+	const subscriptionId = url.searchParams.get('subscription_id') ?? undefined;
+
+	const items = await listItems(env, { subscriptionId, limit, offset });
+	return jsonResponse({
+		items: items.map((row) => ({
+			id: row.id,
+			subscription_id: row.subscription_id,
+			title: row.title,
+			link: row.link,
+			guid: row.guid,
+			published_at: row.published_at,
+			summary: row.summary,
+			fetched_at: row.fetched_at,
+			subscription_title: row.subscription_title,
+			feed_url: row.feed_url,
+		})),
+	});
+}
+
+async function handleApiFetch(request: Request, env: Env, url: URL): Promise<Response> {
+	if (request.method !== 'POST') {
+		return new Response('Method not allowed', { status: 405 });
+	}
+
+	const subscriptionId = url.searchParams.get('subscription_id');
+	if (subscriptionId) {
+		const sub = await getSubscription(env, subscriptionId);
+		if (!sub) {
+			return jsonResponse({ error: 'Not found' }, 404);
+		}
+		const result = await fetchOneSubscription(env, sub);
+		if (!result.ok) {
+			return jsonResponse(
+				{
+					error: result.error ?? 'Fetch failed',
+					subscriptionId: result.subscriptionId,
+					ok: result.ok,
+					status: result.status,
+				},
+				502,
+			);
+		}
+		return jsonResponse(result);
+	}
+
+	const results = await runScheduledFetch(env);
+	return jsonResponse({ results });
+}
+
 export default {
-	async fetch(request, env, _ctx): Promise<Response> {
+	async fetch(request, env, ctx): Promise<Response> {
 		const url = new URL(request.url);
+		const path = url.pathname;
 
-		// /get エンドポイントの処理
-		if (url.pathname === '/get') {
-			const siteUrl = url.searchParams.get('site');
-
-			if (!siteUrl) {
-				return new Response('Missing site parameter', { status: 400 });
-			}
-
-			try {
-				// URLの検証
-				const targetUrl = new URL(siteUrl);
-
-				// リクエストをそのまま転送
-				const response = await fetch(targetUrl.toString(), {
-					method: request.method,
-					headers: request.headers,
-					body: request.body,
-				});
-
-				// 許可された MIME Type のみを許可
-				const allowedMimeTypes = [
-					'application/rss+xml',
-					'application/atom+xml',
-					'application/xml',
-					'text/xml',
-					'application/json',
-					'application/feed+json',
-				];
-
-				const contentType = response.headers.get('content-type') ?? '';
-				const isAllowed = allowedMimeTypes.some((mime) => contentType.toLowerCase().startsWith(mime));
-
-				if (!isAllowed) {
-					return new Response('Unsupported content type', {
-						status: 415, // Unsupported Media Type
-					});
-				}
-
-				// XML系の場合のみフィルタリング処理を行う
-				const isXml = contentType.includes('xml') || contentType.includes('rss') || contentType.includes('atom');
-
-				let responseBody: BodyInit | null = response.body;
-
-				// サイズ制限 (5MB) - これを超える場合はフィルタせずそのまま返す
-				const contentLengthHeader = response.headers.get('content-length');
-				const MAX_SIZE = 5 * 1024 * 1024;
-				let skipFilter = false;
-
-				if (contentLengthHeader) {
-					const length = Number.parseInt(contentLengthHeader, 10);
-					if (!Number.isNaN(length) && length > MAX_SIZE) {
-						skipFilter = true;
-					}
-				}
-
-				if (isXml && !skipFilter) {
-					try {
-						// レスポンスボディを読み込む
-						const arrayBuffer = await response.arrayBuffer();
-
-						if (arrayBuffer.byteLength > MAX_SIZE) {
-							// 実際に読み込んだサイズが大きすぎる場合もスキップ
-							responseBody = arrayBuffer;
-						} else {
-							const decoder = new TextDecoder('utf-8'); // 基本的にUTF-8を仮定
-							const xmlText = decoder.decode(arrayBuffer);
-
-							// サイト識別子を抽出（URL正規化: hostnameを使用）
-							let siteKey: string | undefined;
-							try {
-								siteKey = new URL(siteUrl).hostname;
-							} catch {
-								// URL解析に失敗した場合はsiteKeyをundefinedのまま（グローバル設定のみ使用）
-							}
-
-							// KVから設定を読み込み、コンパイル済み設定を取得
-							const { getCompiledExcludeConfigForSite } = await import('./config_store');
-							let compiledConfig;
-							try {
-								compiledConfig = await getCompiledExcludeConfigForSite(env, siteKey);
-							} catch (e) {
-								console.error('Error loading config from KV, using default:', e);
-								// エラー時はデフォルト設定を使用
-								const { compiledExcludeConfig } = await import('./config');
-								compiledConfig = compiledExcludeConfig;
-							}
-
-							// フィルタリング実行
-							const { filterRss } = await import('./rss');
-							const filteredXml = filterRss(xmlText, compiledConfig);
-
-							responseBody = filteredXml;
-						}
-					} catch (e) {
-						console.error('Error filtering RSS:', e);
-						// エラー時は元のコンテンツ(読み込み済みであれば再利用できないため、ここで復旧は難しいが、
-						// arrayBuffer読み込み後のエラーならスキップして生のデータを返すことは可能かもしれないが、
-						// ここではコンソールログを出して、responseBodyへの代入を行わないことで
-						// 後続の new Response で何を使うか...
-						// arrayBuffer が取れていればそれを使うべき。
-						// tryブロック内で arrayBuffer が定義されていない場合もある。
-						// 簡略化のため、ここでは「フィルタ失敗時はエラーレスポンス」ではなく
-						// 「可能なら生データを返す」ようにしたいが、Stream消費済み問題がある。
-						// 実装上、arrayBuffer変数への代入まで成功していればそれを使う。
-						// 失敗していれば response.body はもう読めないのでエラーになる。
-						// ここではシンプルにエラーレスポンスを返す。
-						return new Response(`RSS Filter Error: ${e instanceof Error ? e.message : 'Unknown'}`, { status: 500 });
-					}
-				}
-
-				// レスポンスをそのまま返す
-				return new Response(responseBody, {
-					status: response.status,
-					statusText: response.statusText,
-					headers: response.headers,
-				});
-			} catch (error) {
-				if (error instanceof TypeError && error.message.includes('Invalid URL')) {
-					return new Response('Invalid URL format', { status: 400 });
-				}
-				return new Response(`Error: ${error instanceof Error ? error.message : 'Unknown error'}`, { status: 500 });
-			}
+		if (path === '/api/settings') {
+			return handleApiSettings(request, env);
 		}
 
-		// /settings エンドポイント: 設定画面を表示
-		if (url.pathname === '/settings') {
-			if (request.method !== 'GET') {
-				return new Response('Method not allowed', { status: 405 });
-			}
+		if (path === '/api/subscriptions') {
+			return handleApiSubscriptions(request, env, ctx);
+		}
+
+		const subMatch = /^\/api\/subscriptions\/([^/]+)$/.exec(path);
+		if (subMatch) {
+			return handleApiSubscriptionById(request, env, subMatch[1]);
+		}
+
+		if (path === '/api/items' && request.method === 'GET') {
+			return handleApiItems(url, env);
+		}
+
+		if (path === '/api/fetch') {
+			return handleApiFetch(request, env, url);
+		}
+
+		if (path === '/settings' && request.method === 'GET') {
 			const html = await generateSettingsPage(env);
-			return new Response(html, {
-				headers: { 'content-type': 'text/html; charset=utf-8' },
-			});
+			return htmlResponse(html);
 		}
 
-		// /api/settings エンドポイント: 設定を保存
-		if (url.pathname === '/api/settings') {
-			if (request.method !== 'POST') {
-				return new Response('Method not allowed', { status: 405 });
-			}
-
-			try {
-				const body = await request.json();
-				const config = body as import('./config').Config;
-
-				// データ構造のバリデーション
-				if (!config || typeof config !== 'object') {
-					return new Response(JSON.stringify({ error: 'Invalid config structure' }), {
-						status: 400,
-						headers: { 'content-type': 'application/json' },
-					});
-				}
-
-				if (!config.global || !Array.isArray(config.global.title) || !Array.isArray(config.global.link)) {
-					return new Response(JSON.stringify({ error: 'Invalid global config structure' }), {
-						status: 400,
-						headers: { 'content-type': 'application/json' },
-					});
-				}
-
-				if (config.sites && typeof config.sites !== 'object') {
-					return new Response(JSON.stringify({ error: 'Invalid sites config structure' }), {
-						status: 400,
-						headers: { 'content-type': 'application/json' },
-					});
-				}
-
-				// 正規表現パターンのバリデーション
-				const { validateRegExp } = await import('./config');
-				const errors: string[] = [];
-
-				// グローバル設定の検証
-				for (const pattern of config.global.title) {
-					if (typeof pattern !== 'string') {
-						errors.push(`Global title: invalid type (expected string)`);
-					} else if (!validateRegExp(pattern)) {
-						errors.push(`Global title: invalid regex pattern "${pattern}"`);
-					}
-				}
-				for (const pattern of config.global.link) {
-					if (typeof pattern !== 'string') {
-						errors.push(`Global link: invalid type (expected string)`);
-					} else if (!validateRegExp(pattern)) {
-						errors.push(`Global link: invalid regex pattern "${pattern}"`);
-					}
-				}
-
-				// サイトごとの設定の検証
-				if (config.sites) {
-					for (const [site, siteConfig] of Object.entries(config.sites)) {
-						if (!siteConfig || typeof siteConfig !== 'object') {
-							errors.push(`Site ${site}: invalid config structure`);
-							continue;
-						}
-						if (!Array.isArray(siteConfig.title) || !Array.isArray(siteConfig.link)) {
-							errors.push(`Site ${site}: invalid config structure (title and link must be arrays)`);
-							continue;
-						}
-						for (const pattern of siteConfig.title) {
-							if (typeof pattern !== 'string') {
-								errors.push(`Site ${site} title: invalid type (expected string)`);
-							} else if (!validateRegExp(pattern)) {
-								errors.push(`Site ${site} title: invalid regex pattern "${pattern}"`);
-							}
-						}
-						for (const pattern of siteConfig.link) {
-							if (typeof pattern !== 'string') {
-								errors.push(`Site ${site} link: invalid type (expected string)`);
-							} else if (!validateRegExp(pattern)) {
-								errors.push(`Site ${site} link: invalid regex pattern "${pattern}"`);
-							}
-						}
-					}
-				}
-
-				if (errors.length > 0) {
-					return new Response(JSON.stringify({ error: `正規表現が間違っています: ${errors.join(', ')}` }), {
-						status: 400,
-						headers: { 'content-type': 'application/json' },
-					});
-				}
-
-				// バリデーション通過後、KVに保存
-				const { saveConfig } = await import('./config_store');
-				await saveConfig(env, config);
-
-				return new Response(JSON.stringify({ success: true }), {
-					status: 200,
-					headers: { 'content-type': 'application/json' },
-				});
-			} catch (error) {
-				console.error('Error saving config:', error);
-				if (error instanceof Error && error.message.includes('Invalid regex')) {
-					return new Response(JSON.stringify({ error: error.message }), {
-						status: 400,
-						headers: { 'content-type': 'application/json' },
-					});
-				}
-				return new Response(JSON.stringify({ error: 'Internal server error' }), {
-					status: 500,
-					headers: { 'content-type': 'application/json' },
-				});
-			}
+		if (path === '/subscriptions' && request.method === 'GET') {
+			return htmlResponse(subscriptionsHtmlTemplate);
 		}
 
-		// ルートパス: トップページを表示
-		const { homeHtmlTemplate } = await import('./templates/home');
+		if (path === '/' && request.method === 'GET') {
+			return htmlResponse(readerHtmlTemplate);
+		}
 
-		return new Response(homeHtmlTemplate, {
-			headers: { 'content-type': 'text/html; charset=utf-8' },
-		});
+		return new Response('Not Found', { status: 404 });
+	},
+
+	async scheduled(_controller, env, ctx): Promise<void> {
+		ctx.waitUntil(runScheduledFetch(env));
 	},
 } satisfies ExportedHandler<Env>;
